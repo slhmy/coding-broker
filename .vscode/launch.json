@@ -1,0 +1,27 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Backend",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/cmd/coding-broker",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "CODING_BROKER_HTTP_ADDR": "127.0.0.1:8787",
+        "CODING_BROKER_DATABASE_PATH": "${workspaceFolder}/data/debug/coding-broker.db",
+        "CODING_BROKER_WORKTREE_ROOT": "${workspaceFolder}/data/debug/worktrees",
+        "CODING_BROKER_AGENT_DRY_RUN": "true",
+        "CODING_BROKER_LOG_LEVEL": "debug"
+      }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Debug Full Stack",
+      "configurations": ["Debug Backend"],
+      "preLaunchTask": "frontend: dev"
+    }
+  ]
+}

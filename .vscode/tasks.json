@@ -1,0 +1,41 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "backend: run",
+      "type": "shell",
+      "command": "go run ./cmd/coding-broker",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "CODING_BROKER_HTTP_ADDR": "127.0.0.1:8787",
+          "CODING_BROKER_DATABASE_PATH": "${workspaceFolder}/data/debug/coding-broker.db",
+          "CODING_BROKER_WORKTREE_ROOT": "${workspaceFolder}/data/debug/worktrees",
+          "CODING_BROKER_AGENT_DRY_RUN": "true",
+          "CODING_BROKER_LOG_LEVEL": "debug"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "frontend: dev",
+      "type": "shell",
+      "command": "pnpm dev --host 127.0.0.1",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*",
+          "endsPattern": "Local:.*http://127\\.0\\.0\\.1:5173/.*"
+        }
+      }
+    }
+  ]
+}

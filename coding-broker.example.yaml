@@ -1,0 +1,39 @@
+http:
+  addr: 127.0.0.1:8787
+
+database:
+  # SQLite database path. "~" is expanded.
+  path: ./data/coding-broker.db
+
+workspace:
+  # Directory browser root. "." or blank uses your home directory; "~" is expanded.
+  root: .
+
+worktree:
+  # Agent and manual worktree root. "~" is expanded.
+  root: ./data/worktrees
+
+codex:
+  command: codex
+  args: []
+  default_model: gpt-5.4
+  available_models:
+    - gpt-5.4
+    - gpt-5.5
+    - gpt-5.4-mini
+    - gpt-5.3-codex
+
+git:
+  remote: origin
+
+agent:
+  dry_run: true
+  idle_timeout: 10m
+
+cors:
+  allowed_origins:
+    - http://127.0.0.1:5173
+    - http://localhost:5173
+
+log:
+  level: info
