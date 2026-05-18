@@ -1,0 +1,57 @@
+http:
+  addr: 127.0.0.1:8787
+
+database:
+  # SQLite database path. "~" is expanded.
+  path: ./data/coding-broker.db
+
+workspace:
+  # Directory browser root. "." or blank uses your home directory; "~" is expanded.
+  root: .
+
+worktree:
+  # Agent and manual worktree root. "~" is expanded.
+  root: ./data/worktrees
+
+codex:
+  command: codex
+  args: []
+  # Explicit env entries passed to Codex sessions. Use this for fixed proxy or CA settings.
+  session_env:
+    # - HTTP_PROXY=http://127.0.0.1:7890
+    # - HTTPS_PROXY=http://127.0.0.1:7890
+    # - NO_PROXY=localhost,127.0.0.1
+  session_env_allowlist:
+    - HTTP_PROXY
+    - HTTPS_PROXY
+    - ALL_PROXY
+    - NO_PROXY
+    - http_proxy
+    - https_proxy
+    - all_proxy
+    - no_proxy
+    - SSL_CERT_FILE
+    - CURL_CA_BUNDLE
+    - GIT_SSL_CAINFO
+    - NODE_EXTRA_CA_CERTS
+  default_model: gpt-5.4
+  available_models:
+    - gpt-5.4
+    - gpt-5.5
+    - gpt-5.4-mini
+    - gpt-5.3-codex
+
+git:
+  remote: origin
+
+agent:
+  dry_run: true
+  idle_timeout: 10m
+
+cors:
+  allowed_origins:
+    - http://127.0.0.1:5173
+    - http://localhost:5173
+
+log:
+  level: info
