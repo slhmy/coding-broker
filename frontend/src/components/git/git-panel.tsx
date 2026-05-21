@@ -1,7 +1,6 @@
 import * as React from "react"
 import {
   GitBranchIcon,
-  GitPullRequestIcon,
   TrashIcon,
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
@@ -26,7 +25,6 @@ type GitPanelProps = {
 }
 
 export function GitPanel({ project, onProjectChange }: GitPanelProps) {
-  const [isPulling, setIsPulling] = React.useState(false)
   const [worktreePendingDelete, setWorktreePendingDelete] = React.useState<Worktree | null>(null)
   const [isDeleting, setIsDeleting] = React.useState(false)
 
@@ -39,27 +37,6 @@ export function GitPanel({ project, onProjectChange }: GitPanelProps) {
     await refreshProject(projectSlug).catch(() => {
       // Explicit user actions surface the original request error.
     })
-  }
-
-  async function pullMain() {
-    if (!project) {
-      return
-    }
-
-    setIsPulling(true)
-    try {
-      await api.pullMain(project.slug)
-      await refreshProject(project.slug)
-      toast.success("Main branch pulled")
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 404) {
-        toast.error("Workspace no longer exists")
-        return
-      }
-      toast.error(error instanceof Error ? error.message : "Pull failed")
-    } finally {
-      setIsPulling(false)
-    }
   }
 
   async function switchWorktree(worktreeId: string) {
@@ -117,7 +94,7 @@ export function GitPanel({ project, onProjectChange }: GitPanelProps) {
         <GitBranchIcon />
         <div className="text-sm font-medium">Select a workspace for Git actions</div>
         <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
-          Pull, branch, and worktree controls become available when this session has a target workspace.
+          Branch status and worktree controls become available when this session has a target workspace.
         </p>
       </div>
     )
@@ -154,14 +131,6 @@ export function GitPanel({ project, onProjectChange }: GitPanelProps) {
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs leading-relaxed text-destructive">
           {project.git.message}
         </div>
-      ) : null}
-
-      <Button onClick={pullMain} disabled={isPulling || !project.git.reachable}>
-        <GitPullRequestIcon data-icon="inline-start" />
-        {isPulling ? "Pulling" : `Pull ${project.git.defaultBranch}`}
-      </Button>
-      {project.git.pullMessage ? (
-        <div className="text-xs leading-relaxed text-muted-foreground">{project.git.pullMessage}</div>
       ) : null}
 
       <Separator />

@@ -4,6 +4,7 @@ import {
   CaretDownIcon,
   CheckIcon,
   FolderOpenIcon,
+  GitPullRequestIcon,
   ListIcon,
   PlusIcon,
   RobotIcon,
@@ -71,6 +72,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   })
   const [sessionIdPendingDelete, setSessionIdPendingDelete] = React.useState<string | null>(null)
   const [sessionIdDeleting, setSessionIdDeleting] = React.useState<string | null>(null)
+  const [isPullingWorkspace, setIsPullingWorkspace] = React.useState(false)
 
   const currentSessionId = location.pathname.startsWith("/sessions/")
     ? location.pathname.split("/")[2]
@@ -128,6 +130,29 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   function switchWorkspace(projectSlug: string) {
     onNavigate?.()
     navigate(`/workspace?workspace=${encodeURIComponent(projectSlug)}`)
+  }
+
+  async function pullWorkspace() {
+    if (!selectedProject) {
+      toast.info("Select a workspace before pulling")
+      return
+    }
+
+    setIsPullingWorkspace(true)
+    try {
+      await api.pullMain(selectedProject.slug)
+      const nextProject = await api.project(selectedProject.slug)
+      setProjects((current) =>
+        current.map((project) =>
+          project.slug === nextProject.slug ? nextProject : project
+        )
+      )
+      toast.success("Main branch pulled")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Pull failed")
+    } finally {
+      setIsPullingWorkspace(false)
+    }
   }
 
   async function createWorkspace(event: React.FormEvent<HTMLFormElement>) {
@@ -211,6 +236,41 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         onSwitch={switchWorkspace}
         onAdd={() => setIsWorkspaceDialogOpen(true)}
       />
+
+      <div className="rounded-lg border bg-card p-3 text-card-foreground">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-sm font-medium">Workspace sync</div>
+            <div className="truncate text-xs text-muted-foreground">
+              {selectedProject
+                ? `Update ${selectedProject.git.defaultBranch} for ${selectedProject.name}.`
+                : "Select a workspace to sync its default branch."}
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={pullWorkspace}
+            disabled={
+              isLoading ||
+              isPullingWorkspace ||
+              !selectedProject ||
+              !selectedProject.git.reachable
+            }
+          >
+            <GitPullRequestIcon data-icon="inline-start" />
+            {isPullingWorkspace
+              ? "Pulling"
+              : selectedProject
+                ? `Pull ${selectedProject.git.defaultBranch}`
+                : "Pull"}
+          </Button>
+        </div>
+        {selectedProject?.git.pullMessage ? (
+          <div className="mt-2 text-xs leading-relaxed text-muted-foreground">
+            {selectedProject.git.pullMessage}
+          </div>
+        ) : null}
+      </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-2">
         <div className="flex items-center justify-between gap-2 px-1">
