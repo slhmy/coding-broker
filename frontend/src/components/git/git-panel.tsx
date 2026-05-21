@@ -2,7 +2,6 @@ import * as React from "react"
 import {
   GitBranchIcon,
   GitPullRequestIcon,
-  PlusIcon,
   TrashIcon,
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
@@ -17,7 +16,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { ApiError, api } from "@/lib/api"
 import type { ProjectDetail, Worktree } from "@/types/domain"
@@ -29,12 +27,8 @@ type GitPanelProps = {
 
 export function GitPanel({ project, onProjectChange }: GitPanelProps) {
   const [isPulling, setIsPulling] = React.useState(false)
-  const [isCreating, setIsCreating] = React.useState(false)
   const [worktreePendingDelete, setWorktreePendingDelete] = React.useState<Worktree | null>(null)
   const [isDeleting, setIsDeleting] = React.useState(false)
-  const [worktreeName, setWorktreeName] = React.useState("")
-  const [branchName, setBranchName] = React.useState("")
-  const canCreateWorktree = isValidWorktreeName(worktreeName) && isValidBranchName(branchName)
 
   async function refreshProject(projectSlug: string) {
     const nextProject = await api.project(projectSlug)
@@ -65,36 +59,6 @@ export function GitPanel({ project, onProjectChange }: GitPanelProps) {
       toast.error(error instanceof Error ? error.message : "Pull failed")
     } finally {
       setIsPulling(false)
-    }
-  }
-
-  async function createWorktree() {
-    if (!project) {
-      return
-    }
-    if (!canCreateWorktree) {
-      toast.error("Use a single folder name and a branch without spaces")
-      return
-    }
-
-    setIsCreating(true)
-    try {
-      await api.createWorktree(project.slug, {
-        name: worktreeName.trim(),
-        branch: branchName.trim(),
-      })
-      setWorktreeName("")
-      setBranchName("")
-      await refreshProject(project.slug)
-      toast.success("Worktree created")
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 404) {
-        toast.error("Workspace no longer exists")
-        return
-      }
-      toast.error(error instanceof Error ? error.message : "Could not create worktree")
-    } finally {
-      setIsCreating(false)
     }
   }
 
@@ -241,32 +205,6 @@ export function GitPanel({ project, onProjectChange }: GitPanelProps) {
         </div>
       </div>
 
-      <div className="flex flex-col gap-2 rounded-lg bg-muted p-3">
-        <div className="text-sm font-medium">Create worktree</div>
-        <Input
-          aria-label="Worktree name"
-          value={worktreeName}
-          onChange={(event) => setWorktreeName(event.target.value)}
-          placeholder="worktree name"
-        />
-        <div className="text-xs text-muted-foreground">Use a single folder name without slashes.</div>
-        <Input
-          aria-label="Branch name"
-          value={branchName}
-          onChange={(event) => setBranchName(event.target.value)}
-          placeholder="feature/branch-name"
-        />
-        <div className="text-xs text-muted-foreground">Use a valid branch name without spaces.</div>
-        <Button
-          variant="secondary"
-          disabled={isCreating || !canCreateWorktree}
-          onClick={createWorktree}
-        >
-          <PlusIcon data-icon="inline-start" />
-          {isCreating ? "Creating" : "Create"}
-        </Button>
-      </div>
-
       <Dialog
         open={worktreePendingDelete !== null}
         onOpenChange={(open) => {
@@ -303,27 +241,5 @@ export function GitPanel({ project, onProjectChange }: GitPanelProps) {
         </DialogContent>
       </Dialog>
     </div>
-  )
-}
-
-function isValidWorktreeName(name: string) {
-  const trimmed = name.trim()
-  return (
-    trimmed !== "" &&
-    trimmed !== "." &&
-    trimmed !== ".." &&
-    !trimmed.includes("/") &&
-    !trimmed.includes("\\")
-  )
-}
-
-function isValidBranchName(name: string) {
-  const trimmed = name.trim()
-  return (
-    trimmed !== "" &&
-    !/\s/.test(trimmed) &&
-    !trimmed.includes("..") &&
-    !trimmed.startsWith("/") &&
-    !trimmed.endsWith("/")
   )
 }
