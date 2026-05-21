@@ -59,7 +59,7 @@ export function GitPanel({ project, onProjectChange }: GitPanelProps) {
       toast.success("Main branch pulled")
     } catch (error) {
       if (error instanceof ApiError && error.status === 404) {
-        toast.error("Project no longer exists")
+        toast.error("Workspace no longer exists")
         return
       }
       toast.error(error instanceof Error ? error.message : "Pull failed")
@@ -89,7 +89,7 @@ export function GitPanel({ project, onProjectChange }: GitPanelProps) {
       toast.success("Worktree created")
     } catch (error) {
       if (error instanceof ApiError && error.status === 404) {
-        toast.error("Project no longer exists")
+        toast.error("Workspace no longer exists")
         return
       }
       toast.error(error instanceof Error ? error.message : "Could not create worktree")
@@ -151,9 +151,9 @@ export function GitPanel({ project, onProjectChange }: GitPanelProps) {
     return (
       <div className="flex h-full min-h-64 flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-6 text-center">
         <GitBranchIcon />
-        <div className="text-sm font-medium">Select a project for Git actions</div>
+        <div className="text-sm font-medium">Select a workspace for Git actions</div>
         <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
-          Pull, branch, and worktree controls become available when this session has a target project.
+          Pull, branch, and worktree controls become available when this session has a target workspace.
         </p>
       </div>
     )
@@ -167,7 +167,6 @@ export function GitPanel({ project, onProjectChange }: GitPanelProps) {
             <GitBranchIcon data-icon="inline-start" />
             <span className="truncate">{project.name}</span>
           </div>
-          <div className="mt-1 truncate text-xs text-muted-foreground">{project.path}</div>
         </div>
         <StatusBadge value={project.health} />
       </div>
@@ -280,7 +279,7 @@ export function GitPanel({ project, onProjectChange }: GitPanelProps) {
           <DialogHeader>
             <DialogTitle>Delete worktree</DialogTitle>
             <DialogDescription>
-              Remove {worktreePendingDelete?.name ?? "this worktree"} from the project.
+              Remove {worktreePendingDelete?.name ?? "this worktree"} from the workspace.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

@@ -460,7 +460,9 @@ export const handlers = [
       id: `ses-${crypto.randomUUID().slice(0, 8)}`,
       title: body.prompt?.trim()
         ? truncateCharacters(body.prompt.trim(), 80)
-        : `Work on ${project.name}`,
+        : body.useCurrentBranch
+          ? "Current branch"
+          : `Work on ${project.name}`,
       status: "idle",
       mode: "ask",
       model: sessionModel,
@@ -486,7 +488,9 @@ export const handlers = [
             {
               id: `msg-${crypto.randomUUID().slice(0, 8)}`,
               role: "assistant",
-              content: `Session ready for ${project.name}. Ask, Plan, and Act are available as session modes with this locked project context.`,
+              content: body.useCurrentBranch
+                ? `Session ready on ${project.name}'s current branch. Ask, Plan, and Act are available as session modes.`
+                : `Session ready for ${project.name}. Ask, Plan, and Act are available as session modes with this locked workspace context.`,
               createdAt,
             },
           ],
@@ -555,7 +559,14 @@ export const handlers = [
 
     const nextTitle = title ? truncateCharacters(title, 80) : session.title
     const nextMode = body.mode ?? session.mode
-    if (nextTitle === session.title && nextMode === session.mode && sessionModel === session.model) {
+    const nextWorktreeId =
+      body.worktreeId === undefined ? session.worktreeId : body.worktreeId || undefined
+    if (
+      nextTitle === session.title &&
+      nextMode === session.mode &&
+      sessionModel === session.model &&
+      nextWorktreeId === session.worktreeId
+    ) {
       return HttpResponse.json(sessionRecord(session))
     }
 
@@ -565,6 +576,7 @@ export const handlers = [
       projectSlug: session.projectSlug,
       mode: nextMode,
       model: sessionModel,
+      worktreeId: nextWorktreeId,
       status: session.status,
       updatedAt: now(),
     }

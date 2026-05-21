@@ -1,7 +1,9 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import * as React from "react"
 import {
-  FolderIcon,
+  CaretDownIcon,
+  CheckIcon,
+  FolderOpenIcon,
   ListIcon,
   PlusIcon,
   RobotIcon,
@@ -14,6 +16,7 @@ import { toast } from "sonner"
 import { StatusBadge } from "@/components/status-badge"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
+import { DirectoryPicker } from "@/components/projects/directory-picker"
 import {
   Dialog,
   DialogContent,
@@ -22,6 +25,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Sheet,
@@ -34,45 +47,13 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { api } from "@/lib/api"
 import { formatShortDateTime } from "@/lib/datetime"
 import {
+  createSession as createStoredSession,
   deleteSession as deleteStoredSession,
   ensureSessionsLoaded,
   useSessionStore,
 } from "@/lib/session-store"
 import { cn } from "@/lib/utils"
 import type { ProjectDetail } from "@/types/domain"
-
-function ShellNavigation({ onNavigate }: { onNavigate?: () => void }) {
-  return (
-    <nav className="flex flex-col gap-1 text-sm">
-      <NavLink
-        to="/agents"
-        onClick={onNavigate}
-        className={({ isActive }) =>
-          cn(
-            "flex h-8 items-center gap-2 rounded-lg px-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-            isActive && "bg-muted text-foreground"
-          )
-        }
-      >
-        <RobotIcon data-icon="inline-start" />
-        Agents
-      </NavLink>
-      <NavLink
-        to="/projects"
-        onClick={onNavigate}
-        className={({ isActive }) =>
-          cn(
-            "flex h-8 items-center gap-2 rounded-lg px-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-            isActive && "bg-muted text-foreground"
-          )
-        }
-      >
-        <FolderIcon data-icon="inline-start" />
-        Folders
-      </NavLink>
-    </nav>
-  )
-}
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const navigate = useNavigate()
@@ -81,8 +62,26 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const [projects, setProjects] = React.useState<ProjectDetail[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [isCreating, setIsCreating] = React.useState(false)
+  const [isWorkspaceDialogOpen, setIsWorkspaceDialogOpen] = React.useState(false)
+  const [isSubmittingWorkspace, setIsSubmittingWorkspace] = React.useState(false)
+  const [workspaceForm, setWorkspaceForm] = React.useState({
+    name: "",
+    path: "",
+    defaultBranch: "main",
+  })
   const [sessionIdPendingDelete, setSessionIdPendingDelete] = React.useState<string | null>(null)
   const [sessionIdDeleting, setSessionIdDeleting] = React.useState<string | null>(null)
+
+  const currentSessionId = location.pathname.startsWith("/sessions/")
+    ? location.pathname.split("/")[2]
+    : null
+  const currentSession = currentSessionId
+    ? sessions.find((session) => session.id === currentSessionId)
+    : null
+  const queryParams = new URLSearchParams(location.search)
+  const queryProjectSlug = queryParams.get("workspace") ?? queryParams.get("project")
+  const selectedProjectSlug = currentSession?.projectSlug ?? queryProjectSlug ?? projects[0]?.slug ?? null
+  const selectedProject = projects.find((project) => project.slug === selectedProjectSlug) ?? null
 
   const sessionPendingDelete = React.useMemo(
     () => sessions.find((session) => session.id === sessionIdPendingDelete) ?? null,
@@ -105,11 +104,66 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
     })
   }, [loadSidebarData])
 
-  async function createSession() {
+  async function createSession(useCurrentBranch: boolean) {
+    if (!selectedProjectSlug) {
+      toast.info("Select a workspace before starting a session")
+      return
+    }
+
     setIsCreating(true)
+    try {
+      const session = await createStoredSession({
+        projectSlug: selectedProjectSlug,
+        useCurrentBranch,
+      })
+      onNavigate?.()
+      navigate(`/sessions/${session.id}`)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not create session")
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
+  function switchWorkspace(projectSlug: string) {
     onNavigate?.()
-    navigate("/agents")
-    setIsCreating(false)
+    navigate(`/workspace?workspace=${encodeURIComponent(projectSlug)}`)
+  }
+
+  async function createWorkspace(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!workspaceForm.path.trim()) {
+      toast.error("Workspace path is required")
+      return
+    }
+    if (/\s/.test(workspaceForm.defaultBranch.trim())) {
+      toast.error("Default branch must not contain whitespace")
+      return
+    }
+    if (!isLikelyBranchName(workspaceForm.defaultBranch.trim())) {
+      toast.error("Default branch must be a valid branch name")
+      return
+    }
+
+    setIsSubmittingWorkspace(true)
+    try {
+      const workspace = await api.createProject({
+        name: workspaceForm.name.trim() || undefined,
+        path: workspaceForm.path.trim(),
+        defaultBranch: workspaceForm.defaultBranch.trim() || undefined,
+      })
+      const nextProjects = await api.projects()
+      setProjects(nextProjects)
+      setWorkspaceForm({ name: "", path: "", defaultBranch: "main" })
+      setIsWorkspaceDialogOpen(false)
+      toast.success(`${workspace.name} added`)
+      switchWorkspace(workspace.slug)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not add workspace")
+    } finally {
+      setIsSubmittingWorkspace(false)
+    }
   }
 
   async function deleteSession() {
@@ -124,14 +178,14 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       api.projects()
         .then(setProjects)
         .catch(() => {
-          // The session is already deleted; project counts will refresh on the next load.
+          // The session is already deleted; workspace counts will refresh on the next load.
         })
       setSessionIdPendingDelete(null)
       toast.success("Session deleted")
 
       if (location.pathname === `/sessions/${deletedSessionId}`) {
         onNavigate?.()
-        navigate("/agents")
+        navigate("/workspace")
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not delete session")
@@ -145,24 +199,42 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
           <div className="truncate text-sm font-medium">Coding Broker</div>
-          <div className="truncate text-xs text-muted-foreground">Agents workspace</div>
+          <div className="truncate text-xs text-muted-foreground">Workspace</div>
         </div>
-        <Button size="icon-sm" onClick={createSession} disabled={isCreating}>
-          <PlusIcon />
-          <span className="sr-only">New session</span>
-        </Button>
         <ThemeToggle />
       </div>
 
-      <ShellNavigation onNavigate={onNavigate} />
+      <WorkspaceSwitcher
+        projects={projects}
+        selectedProject={selectedProject}
+        isLoading={isLoading}
+        onSwitch={switchWorkspace}
+        onAdd={() => setIsWorkspaceDialogOpen(true)}
+      />
 
       <div className="flex min-h-0 flex-1 flex-col gap-2">
         <div className="flex items-center justify-between gap-2 px-1">
           <span className="text-xs font-medium text-muted-foreground">Sessions</span>
-          <Button variant="ghost" size="xs" onClick={createSession} disabled={isCreating}>
-            <PlusIcon data-icon="inline-start" />
-            New
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="xs"
+              onClick={() => createSession(true)}
+              disabled={isCreating}
+            >
+              <PlusIcon data-icon="inline-start" />
+              New
+            </Button>
+            <Button
+              variant="ghost"
+              size="xs"
+              onClick={() => createSession(false)}
+              disabled={isCreating}
+            >
+              <PlusIcon data-icon="inline-start" />
+              Worktree
+            </Button>
+          </div>
         </div>
         <ScrollArea className="min-h-0 flex-1">
           <div className="flex flex-col gap-1 pr-2">
@@ -192,7 +264,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                   >
                     <div className="truncate font-medium">{session.title}</div>
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <span className="truncate">{project?.name ?? "Missing project"}</span>
+                      <span className="truncate">{project?.name ?? "Missing workspace"}</span>
                       <span aria-hidden="true">/</span>
                       <span>{session.mode}</span>
                     </div>
@@ -226,9 +298,9 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                 <RobotIcon />
                 <div className="text-xs font-medium">No sessions yet</div>
                 <p className="text-xs leading-relaxed text-muted-foreground">
-                  Start from a project to keep context locked.
+                  Start from a workspace to keep context locked.
                 </p>
-                <Button variant="outline" size="xs" onClick={createSession}>
+                <Button variant="outline" size="xs" onClick={() => createSession(true)}>
                   <PlusIcon data-icon="inline-start" />
                   New
                 </Button>
@@ -264,7 +336,122 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <Dialog open={isWorkspaceDialogOpen} onOpenChange={setIsWorkspaceDialogOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <form onSubmit={createWorkspace} className="contents">
+            <DialogHeader>
+              <DialogTitle>Add workspace</DialogTitle>
+              <DialogDescription>
+                Register an existing Git work tree so sessions can use it as context.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-3">
+              <Input
+                aria-label="Workspace display name"
+                value={workspaceForm.name}
+                onChange={(event) =>
+                  setWorkspaceForm((current) => ({
+                    ...current,
+                    name: event.target.value,
+                  }))
+                }
+                placeholder="Display name"
+              />
+              <DirectoryPicker
+                value={workspaceForm.path}
+                onValueChange={(path) =>
+                  setWorkspaceForm((current) => ({ ...current, path }))
+                }
+                disabled={isSubmittingWorkspace}
+              />
+              <Input
+                aria-label="Default branch"
+                value={workspaceForm.defaultBranch}
+                onChange={(event) =>
+                  setWorkspaceForm((current) => ({
+                    ...current,
+                    defaultBranch: event.target.value,
+                  }))
+                }
+                placeholder="main"
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="submit"
+                disabled={isSubmittingWorkspace || !workspaceForm.path.trim()}
+              >
+                <PlusIcon data-icon="inline-start" />
+                {isSubmittingWorkspace ? "Adding" : "Add workspace"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
+  )
+}
+
+function WorkspaceSwitcher({
+  projects,
+  selectedProject,
+  isLoading,
+  onSwitch,
+  onAdd,
+}: {
+  projects: ProjectDetail[]
+  selectedProject: ProjectDetail | null
+  isLoading: boolean
+  onSwitch: (projectSlug: string) => void
+  onAdd: () => void
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          className="h-auto w-full justify-between gap-2 px-3 py-2 text-left"
+          disabled={isLoading}
+        >
+          <div className="flex min-w-0 items-center gap-2">
+            <FolderOpenIcon data-icon="inline-start" />
+            <div className="min-w-0">
+              <div className="truncate text-sm font-medium">
+                {selectedProject?.name ?? "Select workspace"}
+              </div>
+            </div>
+          </div>
+          <CaretDownIcon />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-64">
+        <DropdownMenuLabel>Switch workspace</DropdownMenuLabel>
+        <DropdownMenuGroup>
+          {projects.length > 0 ? (
+            projects.map((project) => (
+              <DropdownMenuItem
+                key={project.slug}
+                onSelect={() => onSwitch(project.slug)}
+                className="min-h-10"
+              >
+                <FolderOpenIcon data-icon="inline-start" />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate">{project.name}</div>
+                </div>
+                {selectedProject?.slug === project.slug ? <CheckIcon /> : null}
+              </DropdownMenuItem>
+            ))
+          ) : (
+            <DropdownMenuItem disabled>No workspaces</DropdownMenuItem>
+          )}
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={onAdd}>
+          <PlusIcon data-icon="inline-start" />
+          Add workspace
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
@@ -295,7 +482,7 @@ export function AppShell() {
           </Sheet>
           <div className="flex min-w-0 items-center gap-2">
             <ListIcon />
-            <span className="truncate text-sm font-medium">Agent workspace</span>
+            <span className="truncate text-sm font-medium">Workspace</span>
           </div>
           <ThemeToggle />
         </header>
@@ -306,4 +493,8 @@ export function AppShell() {
       </div>
     </div>
   )
+}
+
+function isLikelyBranchName(value: string) {
+  return value === "" || (!value.includes("..") && !value.startsWith("/") && !value.endsWith("/"))
 }

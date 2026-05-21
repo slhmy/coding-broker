@@ -143,6 +143,7 @@ export type CreateSessionInput = {
   projectSlug: string
   prompt?: string
   model?: string
+  useCurrentBranch?: boolean
 }
 
 export type CreateProjectInput = {
@@ -155,6 +156,7 @@ export type UpdateSessionInput = {
   title?: string
   mode?: SessionMode
   model?: string
+  worktreeId?: string
 }
 
 export type SendMessageInput = {

@@ -28,7 +28,7 @@ export function ProjectSelector({
       onValueChange={onValueChange}
     >
       <SelectTrigger className="w-full sm:w-72">
-        <SelectValue placeholder="Select project" />
+        <SelectValue placeholder="Select workspace" />
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>

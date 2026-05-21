@@ -264,9 +264,9 @@ func (s *Store) UpdateSessionModel(ctx context.Context, id string, sessionModel 
 func (s *Store) UpdateSession(ctx context.Context, session model.Session) (model.Session, error) {
 	result, err := s.db.ExecContext(ctx, `
 		update sessions
-		set title = ?, mode = ?, model = ?, updated_at = ?
+		set title = ?, mode = ?, model = ?, worktree_id = ?, updated_at = ?
 		where id = ?
-	`, session.Title, session.Mode, session.Model, time.Now().UTC(), session.ID)
+	`, session.Title, session.Mode, session.Model, session.WorktreeID, time.Now().UTC(), session.ID)
 	if err != nil {
 		return model.Session{}, err
 	}

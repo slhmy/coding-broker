@@ -430,10 +430,11 @@ func (api *API) listSessions(w http.ResponseWriter, r *http.Request) {
 
 func (api *API) createSession(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		ProjectSlug string `json:"projectSlug"`
-		Prompt      string `json:"prompt"`
-		Model       string `json:"model"`
-		WorktreeID  string `json:"worktreeId"`
+		ProjectSlug      string `json:"projectSlug"`
+		Prompt           string `json:"prompt"`
+		Model            string `json:"model"`
+		WorktreeID       string `json:"worktreeId"`
+		UseCurrentBranch bool   `json:"useCurrentBranch"`
 	}
 	if !decodeJSON(w, r, &req) {
 		return
@@ -451,7 +452,11 @@ func (api *API) createSession(w http.ResponseWriter, r *http.Request) {
 	prompt := strings.TrimSpace(req.Prompt)
 	title := prompt
 	if prompt == "" {
-		title = "Work on " + project.Name
+		if req.UseCurrentBranch {
+			title = "Current branch"
+		} else {
+			title = "Work on " + project.Name
+		}
 	}
 	title = truncateRunes(title, 80)
 	sessionModel, ok := api.normalizeModel(req.Model)
@@ -476,7 +481,9 @@ func (api *API) createSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var targetWorktreeID string
-	if req.WorktreeID != "" {
+	if req.UseCurrentBranch {
+		targetWorktreeID = ""
+	} else if req.WorktreeID != "" {
 		wt, err := api.store.GetWorktree(r.Context(), req.WorktreeID)
 		if err != nil {
 			writeErrorMessage(w, http.StatusBadRequest, "specified worktree not found")
@@ -558,9 +565,10 @@ func (api *API) deleteSession(w http.ResponseWriter, r *http.Request) {
 
 func (api *API) updateSession(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Title *string            `json:"title"`
-		Mode  *model.SessionMode `json:"mode"`
-		Model *string            `json:"model"`
+		Title      *string            `json:"title"`
+		Mode       *model.SessionMode `json:"mode"`
+		Model      *string            `json:"model"`
+		WorktreeID *string            `json:"worktreeId"`
 	}
 	if !decodeJSON(w, r, &req) {
 		return
@@ -598,7 +606,18 @@ func (api *API) updateSession(w http.ResponseWriter, r *http.Request) {
 		}
 		updated.Model = sessionModel
 	}
-	if updated.Title == session.Title && updated.Mode == session.Mode && updated.Model == session.Model {
+	if req.WorktreeID != nil {
+		worktreeID := strings.TrimSpace(*req.WorktreeID)
+		if worktreeID != "" {
+			wt, err := api.store.GetWorktree(r.Context(), worktreeID)
+			if err != nil || wt.ProjectSlug != session.ProjectSlug {
+				writeErrorMessage(w, http.StatusBadRequest, "specified worktree not found")
+				return
+			}
+		}
+		updated.WorktreeID = worktreeID
+	}
+	if updated.Title == session.Title && updated.Mode == session.Mode && updated.Model == session.Model && updated.WorktreeID == session.WorktreeID {
 		writeJSON(w, http.StatusOK, session)
 		return
 	}

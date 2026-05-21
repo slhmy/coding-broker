@@ -20,6 +20,7 @@ import {
   StopIcon,
   TerminalIcon,
   WarningCircleIcon,
+  XIcon,
 } from "@phosphor-icons/react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
@@ -99,6 +100,7 @@ export function SessionPage() {
   const [isLoading, setIsLoading] = React.useState(true)
   const [isSending, setIsSending] = React.useState(false)
   const [isCanceling, setIsCanceling] = React.useState(false)
+  const [isClearingContext, setIsClearingContext] = React.useState(false)
   const [isRenaming, setIsRenaming] = React.useState(false)
   const [isRenameDialogOpen, setIsRenameDialogOpen] = React.useState(false)
   const [renameTitle, setRenameTitle] = React.useState("")
@@ -150,7 +152,7 @@ export function SessionPage() {
   const handleMissingSession = React.useCallback((error: unknown) => {
     if (error instanceof ApiError && error.status === 404) {
       toast.error("Session no longer exists")
-      navigate("/agents")
+      navigate("/workspace")
       return true
     }
     return false
@@ -218,7 +220,7 @@ export function SessionPage() {
   }, [])
 
   async function createSession() {
-    navigate("/agents")
+    navigate("/workspace")
   }
 
   async function updateMode(mode: SessionMode) {
@@ -279,6 +281,26 @@ export function SessionPage() {
       toast.error(error instanceof Error ? error.message : "Could not rename session")
     } finally {
       setIsRenaming(false)
+    }
+  }
+
+  async function clearSessionContext() {
+    if (!session || !session.worktreeId) {
+      return
+    }
+
+    setIsClearingContext(true)
+    try {
+      await updateStoredSession(session.id, { worktreeId: "" })
+      await refreshStoredSession(session.id)
+      toast.success("Session context cleared")
+    } catch (error) {
+      if (handleMissingSession(error)) {
+        return
+      }
+      toast.error(error instanceof Error ? error.message : "Could not clear session context")
+    } finally {
+      setIsClearingContext(false)
     }
   }
 
@@ -425,7 +447,7 @@ export function SessionPage() {
               New session
             </Button>
             <Button variant="outline" asChild>
-              <Link to="/agents">Back to agents</Link>
+              <Link to="/workspace">Back to workspace</Link>
             </Button>
           </CardContent>
         </Card>
@@ -437,13 +459,13 @@ export function SessionPage() {
     (candidate) => candidate.slug === session.projectSlug
   )
   const isAgentBusy = session.status === "running"
-  const contextLabel = session.worktree ? "Worktree context" : "Project context"
+  const contextLabel = session.worktree ? "Worktree context" : "Workspace context"
   const contextName = session.worktree?.name ?? selectedProject?.name ?? null
-  const missingContextLabel = session.worktree ? "Missing worktree" : "Missing project"
+  const missingContextLabel = session.worktree ? "Missing worktree" : "Missing workspace"
   const contextPath = session.worktree?.path ?? selectedProject?.path
   const projectContextText = contextPath
     ? `${contextLabel}: ${contextPath}`
-    : "Project context is missing. Start a new session from a folder."
+    : "Workspace context is missing. Start a new session from the workspace switcher."
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -505,6 +527,17 @@ export function SessionPage() {
               missingLabel={missingContextLabel}
               className="hidden sm:flex"
             />
+            {session.worktreeId ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearSessionContext}
+                disabled={isClearingContext}
+              >
+                <XIcon data-icon="inline-start" />
+                Clear context
+              </Button>
+            ) : null}
             {(session.status === "failed" || isLikelyTimedOut(session, runningDuration)) && lastUserMessage ? (
               <Button variant="outline" size="sm" onClick={retryLastMessage} disabled={isSending}>
                 <ArrowClockwiseIcon data-icon="inline-start" />
@@ -517,7 +550,7 @@ export function SessionPage() {
                   <DotsThreeOutlineIcon data-icon="inline-start" className="sm:hidden" />
                   <GitBranchIcon data-icon="inline-start" className="hidden sm:block" />
                   <span className="sm:hidden">Details</span>
-                  <span className="hidden sm:inline">Project Git</span>
+                  <span className="hidden sm:inline">Workspace Git</span>
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-[92vw] overflow-auto sm:w-[32rem]">
@@ -527,11 +560,24 @@ export function SessionPage() {
                 <div className="flex flex-col gap-4 px-4 pb-4">
                   <div className="space-y-2 rounded-xl border p-3">
                     <div className="text-sm font-medium">{contextLabel}</div>
-                    <ProjectContextBadge
-                      contextName={contextName}
-                      missingLabel={missingContextLabel}
-                      compact
-                    />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <ProjectContextBadge
+                        contextName={contextName}
+                        missingLabel={missingContextLabel}
+                        compact
+                      />
+                      {session.worktreeId ? (
+                        <Button
+                          variant="outline"
+                          size="xs"
+                          onClick={clearSessionContext}
+                          disabled={isClearingContext}
+                        >
+                          <XIcon data-icon="inline-start" />
+                          Clear
+                        </Button>
+                      ) : null}
+                    </div>
                     <p className="text-sm text-muted-foreground">{projectContextText}</p>
                   </div>
                   {session && (
@@ -541,9 +587,9 @@ export function SessionPage() {
                     />
                   )}
                   <div className="space-y-2 rounded-xl border p-3">
-                    <div className="text-sm font-medium">Project Git</div>
+                    <div className="text-sm font-medium">Workspace Git</div>
                     <p className="text-sm text-muted-foreground">
-                      Review branch status and recent changes for this project.
+                      Review branch status and recent changes for this workspace.
                     </p>
                   </div>
                   <GitPanel project={project} onProjectChange={setProject} />
@@ -1450,7 +1496,7 @@ function modePlaceholder(mode: SessionMode) {
   if (mode === "act") {
     return "Ask the agent to edit, verify, or commit"
   }
-  return "Ask about the project or next steps"
+  return "Ask about the workspace or next steps"
 }
 
 function ModeContext({
@@ -1467,7 +1513,7 @@ function ModeContext({
         </CardTitle>
         <CardDescription>
           {session.mode === "ask"
-            ? "Ask is read-only exploration and project Q&A."
+            ? "Ask is read-only exploration and workspace Q&A."
             : session.mode === "plan"
               ? "Plan is read-only implementation planning with files, risks, and checks."
               : "Act can edit files, run verification, and commit when you ask."}

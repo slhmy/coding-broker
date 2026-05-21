@@ -4,12 +4,11 @@ Responsive local Agent proxy demo built with React, Vite, and shadcn/ui. In norm
 
 ## Flow
 
-- `/agents` is the Cursor-style Agents View: a task composer plus agent/session queue.
+- `/workspace` is the main workspace: workspace registration, Git/worktree context, session creation, and the recent session queue.
 - `/sessions/:sessionId` opens one persistent agent thread with a bottom composer. Ask, Plan, and Act are selected from the composer mode Select, not separate tab pages.
-- Sessions require a project context at creation time. After a session exists, the project context is read-only.
+- Sessions require a workspace context at creation time. After a session exists, the workspace context is read-only.
 - Each session owns a worktree from creation time, and session Git review/publish stays inside that thread.
-- `/projects` lists registered local Git folders for context selection.
-- `/projects/:projectSlug` shows standalone project Git and worktree state, but project pages are secondary to the agent workflow.
+- Workspace Git and worktree management is inline on `/workspace`; there are no separate workspace list/detail pages.
 
 ## Backend API
 
