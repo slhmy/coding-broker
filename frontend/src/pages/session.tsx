@@ -20,7 +20,6 @@ import {
   StopIcon,
   TerminalIcon,
   WarningCircleIcon,
-  XIcon,
 } from "@phosphor-icons/react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
@@ -100,7 +99,6 @@ export function SessionPage() {
   const [isLoading, setIsLoading] = React.useState(true)
   const [isSending, setIsSending] = React.useState(false)
   const [isCanceling, setIsCanceling] = React.useState(false)
-  const [isClearingContext, setIsClearingContext] = React.useState(false)
   const [isRenaming, setIsRenaming] = React.useState(false)
   const [isRenameDialogOpen, setIsRenameDialogOpen] = React.useState(false)
   const [renameTitle, setRenameTitle] = React.useState("")
@@ -281,26 +279,6 @@ export function SessionPage() {
       toast.error(error instanceof Error ? error.message : "Could not rename session")
     } finally {
       setIsRenaming(false)
-    }
-  }
-
-  async function clearSessionContext() {
-    if (!session || !session.worktreeId) {
-      return
-    }
-
-    setIsClearingContext(true)
-    try {
-      await updateStoredSession(session.id, { worktreeId: "" })
-      await refreshStoredSession(session.id)
-      toast.success("Session context cleared")
-    } catch (error) {
-      if (handleMissingSession(error)) {
-        return
-      }
-      toast.error(error instanceof Error ? error.message : "Could not clear session context")
-    } finally {
-      setIsClearingContext(false)
     }
   }
 
@@ -527,17 +505,6 @@ export function SessionPage() {
               missingLabel={missingContextLabel}
               className="hidden sm:flex"
             />
-            {session.worktreeId ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={clearSessionContext}
-                disabled={isClearingContext}
-              >
-                <XIcon data-icon="inline-start" />
-                Clear context
-              </Button>
-            ) : null}
             {(session.status === "failed" || isLikelyTimedOut(session, runningDuration)) && lastUserMessage ? (
               <Button variant="outline" size="sm" onClick={retryLastMessage} disabled={isSending}>
                 <ArrowClockwiseIcon data-icon="inline-start" />
@@ -566,17 +533,6 @@ export function SessionPage() {
                         missingLabel={missingContextLabel}
                         compact
                       />
-                      {session.worktreeId ? (
-                        <Button
-                          variant="outline"
-                          size="xs"
-                          onClick={clearSessionContext}
-                          disabled={isClearingContext}
-                        >
-                          <XIcon data-icon="inline-start" />
-                          Clear
-                        </Button>
-                      ) : null}
                     </div>
                     <p className="text-sm text-muted-foreground">{projectContextText}</p>
                   </div>
