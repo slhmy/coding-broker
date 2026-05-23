@@ -1034,7 +1034,7 @@ function Composer({
             onKeyDown={onKeyDown}
             placeholder={modePlaceholder(session.mode)}
             className={cn(
-              "min-h-11 resize-none border-0 bg-transparent px-1.5 py-1 pr-9 text-sm leading-relaxed shadow-none transition-[min-height,max-height] focus-visible:ring-0 sm:min-h-16",
+              "min-h-11 resize-none border-0 bg-transparent px-1.5 py-1 pr-9 text-base leading-relaxed shadow-none transition-[min-height,max-height] focus-visible:ring-0 md:text-sm sm:min-h-16",
               isExpanded
                 ? "min-h-40 max-h-[min(52vh,28rem)] overflow-y-auto sm:min-h-56"
                 : "max-h-24 overflow-y-auto sm:max-h-36"
