@@ -1061,7 +1061,7 @@ function Composer({
               <ModeSelect value={session.mode} onValueChange={onModeChange} />
               {session.mode === "act" ? (
                 <label
-                  className="inline-flex size-7 shrink-0 items-center justify-center rounded-md border bg-background text-xs text-muted-foreground min-[430px]:w-auto min-[430px]:gap-2 min-[430px]:px-2"
+                  className="inline-flex h-7 w-auto shrink-0 items-center justify-center gap-1.5 rounded-md border bg-background px-2 text-[11px] text-muted-foreground sm:text-xs"
                   title="Auto commit"
                 >
                   <input
@@ -1072,7 +1072,7 @@ function Composer({
                     }
                     className="h-4 w-4 rounded border-input accent-primary"
                   />
-                  <span className="hidden whitespace-nowrap min-[430px]:inline">
+                  <span className="whitespace-nowrap">
                     Auto commit
                   </span>
                 </label>
@@ -1283,11 +1283,11 @@ function MessageBubble({
           "max-w-full min-w-0",
           message.role === "user"
             ? cn(
-                "max-w-full rounded-lg p-2.5 text-sm break-words whitespace-pre-wrap sm:max-w-[92%] sm:p-3 lg:max-w-[84%]",
+                "max-w-full rounded-lg p-3.5 text-sm leading-relaxed break-words whitespace-pre-wrap sm:max-w-[92%] sm:p-3 lg:max-w-[84%]",
                 modeUserMessageClassName(messageMode)
               )
             : cn(
-                "max-w-full rounded-lg bg-muted p-2.5 text-sm break-words sm:max-w-[92%] sm:p-3 lg:max-w-[84%]",
+                "max-w-full rounded-lg bg-muted p-3.5 text-sm leading-relaxed break-words sm:max-w-[92%] sm:p-3 lg:max-w-[84%]",
                 modeMessageClassName(messageMode)
               )
         )}
@@ -1297,7 +1297,7 @@ function MessageBubble({
           isUser={message.role === "user"}
         />
       </div>
-      <div className="flex max-w-full flex-wrap items-center gap-1 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
+      <div className="hidden max-w-full flex-wrap items-center gap-1 sm:flex sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
         <span className="px-1 text-xs text-muted-foreground">
           {messageTime}
         </span>
@@ -1822,7 +1822,7 @@ function FileChangeEventBubble({
         </div>
       ) : null}
       {patch ? (
-        <pre className="subtle-scrollbar mt-2 max-h-72 max-w-full overflow-auto rounded border bg-background p-2 text-[11px] leading-relaxed">
+        <pre className="mt-2 max-w-full rounded border bg-background p-2 text-[11px] leading-relaxed">
           <DiffLines content={patch} files={files.map((file) => file.path)} />
           {truncated ? (
             <span className="block px-1 text-muted-foreground">
@@ -1950,7 +1950,7 @@ function RichMessageContent({
   return (
     <div
       className={cn(
-        "markdown-body w-full min-w-0 text-sm leading-relaxed",
+        "markdown-body w-full min-w-0 text-[15px] leading-7 sm:text-sm sm:leading-relaxed",
         isUser && "text-primary-foreground"
       )}
     >
@@ -2815,7 +2815,7 @@ function ChangePreview({
         {diffBlocks.map((diff, index) => (
           <pre
             key={index}
-            className="subtle-scrollbar max-h-72 max-w-full overflow-auto rounded-md border bg-background p-3 text-xs"
+            className="max-w-full rounded-md border bg-background p-3 text-xs"
           >
             <DiffLines content={diff} />
           </pre>
